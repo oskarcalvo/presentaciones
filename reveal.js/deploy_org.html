@@ -1,0 +1,388 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+
+		<title>reveal.js – The HTML Presentation Framework</title>
+
+		<meta name="description" content="A framework for easily creating beautiful presentations using HTML">
+		<meta name="author" content="Hakim El Hattab">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+				<h1>Deployer.org</h1>
+				<p>
+					<a href="http://deployer.org" targe="_blank">Deployer</a> es una herramienta escrita en php, usa la <a href="http://symfony.com/doc/current/components/console.html" target="_blank">consoloa de Symfony</a>, la idea de detras de Deployer es construir una herramienta similar a Capistrano, pero en PHP.
+				</p>
+				</section>
+				<section>
+					<section>
+						<h1>Antes de empezar</h1>
+						<p>Hay que tener en cuenta que para poder usar Deployer tenemos que configurar el SSH agent forwarding en nuestro equipo o en los equipos de aquellas personas que vayan a realizar tareas con Deployer. De esta forma evitamos tener que añadir claves ssh en las máquinas.
+						</p>
+					</section>
+					<section>
+						<h2>SSH agent forwarding</h2>
+						<p>La configuración se divide en tres pasos:
+							<ul>
+								<li>Configurar las máquinas locales</li>
+								<li>Arrancar el agente ssh</li>
+								<li>Agregar la clave privada que queremos propagar</li>
+							</ul>
+						</p>
+					</section>
+					<section>
+						<h2>Máquinas locales</h2>
+						<p>
+							en ~/.ssh/ creamos un archivo llamado <b>config</b> y añadimos:</p>
+							<pre><code class="hljs" data-trim contenteditable>
+Host oskarcalvo.com
+  ForwardAgent yes
+							</code></pre>
+						<p>Reiniciamos ssh.</p>
+						<pre><code>/etc/init.d/ssh restart</code></pre>
+					</section>
+					<section>
+						<h2>Comprobamos</h2>
+						<pre><code class="hljs" data-trim contenteditable>
+ssh -v oskar@oskarcalvo.com
+						</code></pre>
+						<pre><code class="hljs" data-trim contenteditable>
+OpenSSH_6.7p1 Debian-5+deb8u2, OpenSSL 1.0.1t  3 May 2016
+debug1: Reading configuration data /home/oskar/.ssh/config
+debug1: /home/oskar/.ssh/config line 1: Applying options for oskarcalvo.com
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: /etc/ssh/ssh_config line 19: Applying options for *
+							</code></pre>
+					</section>
+					<section>
+						<h2>
+							Arrancamos el agente ssh.
+						</h2>
+						<p>Tenemos que arrancar el agente de ssh siempre que se arranque el equipo, o montar un script que haga todo esto.
+						<pre><code class="hljs" data-trim contenteditable>
+eval "$(ssh-agent -s)"
+							</code></pre>
+							<pre><code class="hljs" data-trim contenteditable>
+ssh-add ~/.ssh/id_rsa
+							</code></pre>
+							<pre><code class="hljs" data-trim contenteditable>
+ssh-add -L
+							</code></pre>
+					</section>
+					<section>
+						En el servidor remoto ejecutamos:
+							<pre><code class="hljs" data-trim contenteditable>
+ssh-add -L
+							</code></pre>
+						Debería devolvernos la misma salida que en local
+					</section>
+
+
+				</section>
+
+
+
+				<section>
+					<section>
+						<h1>Deployer</h1>
+						<h2>Ahora si, la mandanga</h2>
+						<p>Vamos a ver los pasos de configuración de Deployer para hacerlo funcionar, y la estructura de los directorios del servidor.</p>
+					</section>
+					<section>
+						<h2>Antes de empezar</h2>
+						<p>El proyect de Deployer esta un poco de aquella manera:
+						<ul>
+							<li>La documentación en la rama 2.x</li>
+							<li>La app en la rama 3.x</li>
+							<li>Los desarrolladores corriendo para hacer la rama 4.x</li>
+							<li>Resumiento, unas risas. </li>
+							<li> :( </li>
+						</ul>
+					</section>
+					<section>
+						<p>Si alguien quiere dejar la charla, lo entiendo, yo también he tenido ganas de tirar el equipo por la ventana varias veces.</p>
+					</section>
+
+					<section>
+						<h2>Instalación</h2>
+						<ul>
+						<li>Descargar el *.phar e instalarlo globalmente.
+<pre><code>
+wget http://deployer.org/deployer.phar
+mv deployer.phar /usr/local/bin/dep
+chmod +x /usr/local/bin/dep
+
+</code></pre>
+						</li>
+						<li>Instalarlo localmente medinate composer.
+						<pre><code>
+composer require deployer/deployer:^3.2
+						</code></pre>
+						</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Una vez lo tenemos instalado</h2>
+						<div>Ejecutamos en la raíz de nuestro proyecto
+						<pre><code>dep init</code></pre>
+						Nos devuelve:
+						<pre>
+Please select your project type (defaults to common):
+  [0] common
+  [1] composer
+  [2] symfony
+  [3] laravel
+  [4] yii
+  [5] node.js
+ > 0
+
+						<pre>
+						<div>
+
+					</section>
+					<section>
+						<p>
+							Ya lo hemos instaldo, simplemente escribimos
+							<pre><code> dep </code></pre>
+							para ver todo lo que nos ofrece por ahora.
+						</p>
+					</section>
+
+					<section>
+						<h2>Estructura en local</h2>
+						<p>Antes de entrar en el fregado del código, esta es la estructura más interesante para usar con deploy.</p>
+<pre><code>
+ web
+ ├ deployer.php
+ ├ drupal // Document Root
+ ├ otros archivos o directorios
+
+</code></pre>
+					</section>
+
+					<section>
+						<h2>La estructura en remoto</h2>
+<pre><code>
+ Web
+ ├ shared
+ | └ setings.domain.php (fuera de repo)
+ | └ files.domain (fuera de repo)
+ └ current -> ~/web/releases/(last) yyyymmddhhmmss
+ └ releases
+   └ yyyymmddhhmmss
+     └ sites
+       └ default
+         └ settings.php -> ~/web/shared/settings.domain.php
+         └ files -> ~/web/share/files.domain.php
+   └ yyyymmddhhmmss
+   └ yyyymmddhhmmss
+//Document Root ~/release/drupal
+</code></pre>
+
+					</section>
+
+
+					</section>
+				<section>
+				<section>
+						<h2>Configurar deploy.php</h2>
+						<p>
+							Ahora empieza el código, aparte de lo que veremos lo subiré a gist.
+						</p>
+						<ul>
+							<li>Opciones de configuración</li>
+							<li>Tareas</li>
+							<li>Servidores/Entornos</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Configuración de variables globales</h2>
+						<pre><code>
+set('repository', 'git@github.com:oskarcalvo/charla_deployer.git');
+set('keep_releases', 3);
+set('shared_files', ['drupal/sites/default/settings.php']);
+set('shared_dirs', ['drupal/sites/default/files']);
+set('writable_dirs', ['drupal/sites/default/files']);
+set('ssh_type', 'ext-ssh2');
+
+
+						</code></pre>
+					</section>
+					<section>
+						<h2>Variables globales </h2>
+						<p>Estas variables son accesibles y se pueden usar en comandos.<br>
+						¡Los valores de las variables pueden ser también un array!
+						</p>
+						<pre><code>
+set('key', 'value');
+get('key');
+has('key');
+//Array en vez de string.
+set('writable_dirs', ['app/cache', 'app/logs']);
+
+						</code></pre>
+					</section>
+					<section>
+						<h2>Variables de entorno</h2>
+						<p>Estas variables son accesibles y se pueden usar en comandos</p>
+						<pre><code>
+// Setear una variable:
+env('key', 'value');
+// Geter de una variable
+env('key');
+// Se puede usar el "." para acceder al array.
+env('app.mysql.host');
+						</code></pre>
+					</section>
+					<section>
+					<h2>Tareas</h2>
+						<p>Deployer permite configurar tareas que se pueden ejecutar en los servidores definidos en el proyecto de forma sencilla.
+						</p>
+					</section>
+
+					<section>
+					<h2>Reiniciamos Apache</h2>
+						<pre><code>
+task('apache:restart', function () {
+  run('sudo service apache2 restart');
+})->desc('Restart Apache');
+						</code></pre>
+					</section>
+
+					<section>
+						<h2>Se pueden usar variables en las tareas</h2>
+						<pre><code>
+task('drush:drush_ccall', function(){
+	run ("cd {{deploy_path}}{{drupal_settings_path}} && {{drush_path}} cc all");
+})->desc('Clean all drupal cache');
+						</code></pre>
+
+					</section>
+
+
+					<section>
+						<h2>Task: before & after</h2>
+						<p>
+						Deployer permite definir que algunas tareas se ejecuten antes o después de otras tareas.
+						</p>
+						<pre><code>
+before('deploy:prepare', 'drush:sql-dump');
+after('deploy', 'drush:cc_all');
+						</code></pre>
+					</section>
+					<section>
+						<h2>Tareas con inputs recogidos desde la consola</h2>
+						<p>Existen, pero no he conseguido entender como funcionan :(</p>
+						<pre><code>
+
+						</code></pre>
+					</section>
+					<section>
+						<h2>Agrupar tareas</h2>
+						<pre><code>
+task('deploy', [
+    'deploy:prepare',
+    'deploy:update_code',
+    'deploy:vendors',
+    'deploy:symlink',
+    'cleanup'
+]);
+						</code></pre>
+						<p>Se puede ejecutar con: <pre><code>dep deploy production</code></pre> Ejecuta todas las tareas en el orden definido.</p>
+					</section>
+					<section>
+						<h2>Servidores</h2>
+						<ul>
+						<li>Se pueden definir en archivos php o yml.</li>
+						<li>Se tiene que definir un servidor y un entorno.</li>
+						<li>Se pueden definir multipes servidores para cada entorno.</li>
+						</ul>
+
+					</section>
+					<section>
+						<pre><code>
+production:
+    host: 92.222.85.85
+    port: 22
+    user: deployer
+    forward_agent: ~
+    stage: production #entorno
+    deploy_path: /var/www/html/hq
+    branch: master
+						</code></pre>
+					</section>
+					<section>
+						<pre><code>
+server('dev-svr', '92.222.85.85', 22)
+    ->user('deployer')
+    ->forwardAgent()
+    ->stage(['production'])
+    ->env('deploy_path', '/var/www/html/hq')
+    ->env('branch', 'master')
+
+						</code></pre>
+					</section>
+
+					<section>
+						<h2>Ejemplos en gist</h2>
+						Ejemplo de deploy.php configurado y comentado:
+						<a href="#" target="_blank">abrir aqui</a>
+					</section>
+				</section>
+
+				<section>
+					<h1>Enlaces</h1>
+						<ul>
+							<li>https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/</li>
+							<li>https://developer.github.com/guides/using-ssh-agent-forwarding/</li>
+							<li>http://deployer.org/</li>
+							<li>https://github.com/deployphp/deployer</li>
+							<li>https://github.com/oanhnn/deployer-example</li>
+							<li>https://www.sitepoint.com/deploying-php-applications-with-deployer/</li>
+						</ul>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				history: true,
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
